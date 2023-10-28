@@ -19,5 +19,5 @@ This repository contains the materials for the Part 1 submission of our AI-ducat
   - 5x5 image grid
   - Bar chart showing the distribution of images in each class
 
-  Please be patient while the visualizations are being displayed. After reviewing the visualizations, the labels of any duplicates will be presented.
+  You need to wait a moment for the visualization to be displayed. After closing the images the labels of the duplicates would be displayed.
 
