@@ -14,9 +14,6 @@ import torch.utils.data as td
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torchvision.datasets import ImageFolder
-import matplotlib.pyplot as plt
-from sklearn.metrics import classification_report
-from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 
 
@@ -30,7 +27,7 @@ def dataset_loader(batch_size, shuffle_test=False):
     # Loading training dataset with data augmentation techniques
     dataset = datasets.ImageFolder(root='/Users/roshinichukkapalli/Documents/AI/AIdatasets/TrainDataset',
     transform=transforms.Compose([
-     transforms.Resize((224, 224)),   
+    transforms.Resize((224, 224)),   
     transforms.RandomHorizontalFlip(),
     transforms.RandomCrop(224, 4),
     transforms.Grayscale(num_output_channels=1),
@@ -67,9 +64,9 @@ class MultiLayerFCNet(nn.Module):
     def forward(self, x):
         
         x = self.B1(F.leaky_relu(self.layer1(x)))
-        x =  self.Maxpool(F.leaky_relu(self.layer2(x)))
-        x=self.B2(x)
-        x=self.B3(F.leaky_relu(self.layer3(x)))
+        x = self.Maxpool(F.leaky_relu(self.layer2(x)))
+        x= self.B2(x)
+        x= self.B3(F.leaky_relu(self.layer3(x)))
         x = self.B4(self.Maxpool(F.leaky_relu(self.layer4(x))))
 
         return self.fc(x.view(x.size(0),-1))
@@ -140,34 +137,34 @@ def MultiLayerModel(input_size,hidden_size,output_size,num_epochs,train_loader, 
 
     best_val_loss = float('inf')
     consecutive_no_improvement = 0
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
-    BestACC=0
+    criteria = nn.CrossEntropyLoss()
+    a_optimizer = optim.Adam(model.parameters(), lr=0.01)
+    best_accuracy=0
     for epoch in range(num_epochs):
         running_loss = 0
         for instances, labels in train_loader:
-            optimizer.zero_grad()
+            a_optimizer.zero_grad()
             output = model(instances)
-            loss = criterion(output, labels)
+            loss = criteria(output, labels)
             loss.backward()
-            optimizer.step()
+            a_optimizer.step()
             running_loss += loss.item()
         print("main architecture running loss: ",running_loss / len(train_loader))
 
         model.eval()
         with torch.no_grad():
-            allsamps=0
+            all_samps=0
             val_loss = 0
-            rightPred=0
+            correctPred=0
             for instances, labels in val_loader:
                 output = model(instances)
-                loss = criterion(output, labels)
+                loss = criteria(output, labels)
                 val_loss += loss.item()
                 _, predicted_class = torch.max(output, 1)
-                allsamps += output.size(0)
-                rightPred += (predicted_class == labels).sum().item()
+                all_samps += output.size(0)
+                correctPred += (predicted_class == labels).sum().item()
             val_loss /= len(val_loader)
-            val_accuracy = rightPred / allsamps
+            val_accuracy = correctPred / all_samps
             print(f'Validation Accuracy of Main Architecture: {val_accuracy * 100:.2f}%')
             #print("val loss : ",val_loss)
             if val_loss < best_val_loss:
@@ -175,36 +172,47 @@ def MultiLayerModel(input_size,hidden_size,output_size,num_epochs,train_loader, 
                 consecutive_no_improvement = 0
             else:
                 consecutive_no_improvement += 1
-            #print("consecutive_no_improvement : ",consecutive_no_improvement)
+            print("consecutive_no_improvement : ",consecutive_no_improvement)
             if consecutive_no_improvement >= patience:
                 print(f"Early stopping at epoch {epoch + 1} due to no improvement in validation loss.")
                 break
 
-            if val_accuracy > BestACC:
-                BestACC = val_accuracy
+            if val_accuracy > best_accuracy:
+                best_accuracy = val_accuracy
                 torch.save(model.state_dict(), 'model_main')
+    test_best_model(model,test_loader)
 
-        model.eval()
-        with torch.no_grad():
-            all_samples = 0
-            correct_predictions = 0
+def test_best_model(model,test_loader):
+    class_names = ['Anger     :', 'Neutral   :', 'Engaged   :', 'Bored     :']
+    model.load_state_dict(torch.load('model_main'))
+    model.eval()
+    with torch.no_grad():
+        all_samples = 0
+        correct_predictions = 0
+        y_true = []
+        y_pred = []
+        for instances, labels in test_loader:
+            output = model(instances)
+            _, predicted_class = torch.max(output, 1)
+            all_samples += output.size(0)
+            correct_predictions += (predicted_class == labels).sum().item()
+            y_true.extend(labels.cpu().numpy())
+            y_pred.extend(predicted_class.cpu().numpy())
+    test_accuracy = correct_predictions / all_samples
+    print(f'Test Accuracy of Main Architecture: {test_accuracy * 100:.2f}%')
+    # Generate confusion matrix for Main Architecture
+    cm = confusion_matrix(y_true, y_pred)
+    # Print the confusion matrix with labels
+    print("Confusion Matrix Main Architecture:")
+    for i in range(len(class_names)):
+        print(f"{class_names[i]}{cm[i]}")
 
-            for instances, labels in test_loader:
-                output = model(instances)
-                _, predicted_class = torch.max(output, 1)
-                all_samples += output.size(0)
-                correct_predictions += (predicted_class == labels).sum().item()
 
-            test_accuracy = correct_predictions / all_samples
-            print(f'Test Accuracy of Main Architecture: {test_accuracy * 100:.2f}%')
 
-        print(f"Best Validation Accuracy of Main Architecture: {BestACC * 100:.2f}%")
-                
-        model.train()
 
 #Model for the variant-1 that calculates running loss, validation accuracy and test accurcay
 # Saves the best model based on accuracy.  
-def Variant1Model(input_size,hidden_size,output_size,num_epochs,train_loader, val_loader, test_loader,patience=5):
+def Variant1Model(input_size,hidden_size,output_size,num_epochs,train_loader, val_loader, test_loader,patience=3):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = Variant1_KernelSize(input_size, hidden_size, output_size)
     model = nn.DataParallel(model)
@@ -212,35 +220,35 @@ def Variant1Model(input_size,hidden_size,output_size,num_epochs,train_loader, va
 
     best_val_loss = float('inf')
     consecutive_no_improvement = 0
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
-    BestACC=0
+    criteria = nn.CrossEntropyLoss()
+    a_optimizer = optim.Adam(model.parameters(), lr=0.01)
+    best_accuracy=0
     for epoch in range(num_epochs):
-        running_loss = 0
+        runningloss = 0
         for instances, labels in train_loader:
-            optimizer.zero_grad()
+            a_optimizer.zero_grad()
             output = model(instances)
-            loss = criterion(output, labels)
+            loss = criteria(output, labels)
             loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
+            a_optimizer.step()
+            runningloss += loss.item()
 
-        print("variant-1 running loss : ",running_loss / len(train_loader))
+        print("variant-1 running loss : ",runningloss / len(train_loader))
 
         model.eval()
         with torch.no_grad():
-            allsamps=0
+            all_samps=0
             val_loss = 0
-            rightPred=0
+            correctPred=0
             for instances, labels in val_loader:
                 output = model(instances)
-                loss = criterion(output, labels)
+                loss = criteria(output, labels)
                 val_loss += loss.item()
                 _, predicted_class = torch.max(output, 1)
-                allsamps += output.size(0)
-                rightPred += (predicted_class == labels).sum().item()
+                all_samps += output.size(0)
+                correctPred += (predicted_class == labels).sum().item()
             val_loss /= len(val_loader)
-            val_accuracy = rightPred / allsamps
+            val_accuracy = correctPred / all_samps
             print(f'Validation Accuracy of variant-1 Architecture: {val_accuracy * 100:.2f}%')
 
             if val_loss < best_val_loss:
@@ -248,32 +256,40 @@ def Variant1Model(input_size,hidden_size,output_size,num_epochs,train_loader, va
                 consecutive_no_improvement = 0
             else:
                 consecutive_no_improvement += 1
-            #print("consecutive_no_improvement : ",consecutive_no_improvement)
+            print("consecutive_no_improvement : ",consecutive_no_improvement)
             if consecutive_no_improvement >= patience:
                 print(f"Early stopping at epoch {epoch + 1} due to no improvement in validation loss.")
                 break
 
-            if val_accuracy > BestACC:
-                BestACC = val_accuracy
+            if val_accuracy > best_accuracy:
+                best_accuracy = val_accuracy
                 torch.save(model.state_dict(), 'model_variant1')
 
-        model.eval()
-        with torch.no_grad():
-            all_samples = 0
-            correct_predictions = 0
-
-            for instances, labels in test_loader:
-                output = model(instances)
-                _, predicted_class = torch.max(output, 1)
-                all_samples += output.size(0)
-                correct_predictions += (predicted_class == labels).sum().item()
-
-            test_accuracy = correct_predictions / all_samples
-            print(f'Test Accuracy of variant-1 Architecture: {test_accuracy * 100:.2f}%')
-
-        print(f"Best Validation Accuracy of variant-1 Architecture: {BestACC * 100:.2f}%")
-                
-        model.train()
+    test_best_model_variant1(model,test_loader)   
+def test_best_model_variant1(model,test_loader):
+    class_names = ['Anger     :', 'Neutral   :', 'Engaged   :', 'Bored     :']
+    model.load_state_dict(torch.load('model_variant1'))
+    model.eval()
+    with torch.no_grad():
+        all_samples = 0
+        correct_predictions = 0
+        y_true = []
+        y_pred = []
+        for instances, labels in test_loader:
+            output = model(instances)
+            _, predicted_class = torch.max(output, 1)
+            all_samples += output.size(0)
+            correct_predictions += (predicted_class == labels).sum().item()
+            y_true.extend(labels.cpu().numpy())
+            y_pred.extend(predicted_class.cpu().numpy())
+    test_accuracy = correct_predictions / all_samples
+    print(f'Test Accuracy of Main Architecture: {test_accuracy * 100:.2f}%')
+    # Generate confusion matrix for Model1 Architecture
+    cm = confusion_matrix(y_true, y_pred)
+    # Print the confusion matrix with labels
+    print("Confusion Matrix Variant1:")
+    for i in range(len(class_names)):
+        print(f"{class_names[i]}{cm[i]}")
 
 #Model for the variant-2 that calculates running loss, validation accuracy and test accurcay
 # Saves the best model based on accuracy.  
@@ -285,35 +301,35 @@ def variant2Model(input_size,hidden_size,output_size,num_epochs,train_loader, va
 
     best_val_loss = float('inf')
     consecutive_no_improvement = 0
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
-    BestACC=0
+    criteria = nn.CrossEntropyLoss()
+    a_optimizer = optim.Adam(model.parameters(), lr=0.01)
+    bestAccuracy=0
     for epoch in range(num_epochs):
-        running_loss = 0
+        runningloss = 0
         for instances, labels in train_loader:
-            optimizer.zero_grad()
+            a_optimizer.zero_grad()
             output = model(instances)
-            loss = criterion(output, labels)
+            loss = criteria(output, labels)
             loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
+            a_optimizer.step()
+            runningloss += loss.item()
 
-        print("variant-2 running loss : ",running_loss / len(train_loader))
+        print("variant-2 running loss : ",runningloss / len(train_loader))
 
         model.eval()
         with torch.no_grad():
-            allsamps=0
+            all_samps=0
             val_loss = 0
-            rightPred=0
+            correctPred=0
             for instances, labels in val_loader:
                 output = model(instances)
-                loss = criterion(output, labels)
+                loss = criteria(output, labels)
                 val_loss += loss.item()
                 _, predicted_class = torch.max(output, 1)
-                allsamps += output.size(0)
-                rightPred += (predicted_class == labels).sum().item()
+                all_samps += output.size(0)
+                correctPred += (predicted_class == labels).sum().item()
             val_loss /= len(val_loader)
-            val_accuracy = rightPred / allsamps
+            val_accuracy = correctPred / all_samps
             print(f'Validation Accuracy of variant-2 Architecture: {val_accuracy * 100:.2f}%')
 
             if val_loss < best_val_loss:
@@ -326,28 +342,34 @@ def variant2Model(input_size,hidden_size,output_size,num_epochs,train_loader, va
                 print(f"Early stopping at epoch {epoch + 1} due to no improvement in validation loss.")
                 break
 
-            if val_accuracy > BestACC:
-                BestACC = val_accuracy
+            if val_accuracy > bestAccuracy:
+                bestAccuracy = val_accuracy
                 torch.save(model.state_dict(), 'model_variant2')
 
-        model.eval()
-        with torch.no_grad():
-            all_samples = 0
-            correct_predictions = 0
+    test_best_model_variant2(model,test_loader) 
 
-            for instances, labels in test_loader:
-                output = model(instances)
-                _, predicted_class = torch.max(output, 1)
-                all_samples += output.size(0)
-                correct_predictions += (predicted_class == labels).sum().item()
-
-            test_accuracy = correct_predictions / all_samples
-            print(f'Test Accuracy of variant-2 Architecture: {test_accuracy * 100:.2f}%')
-
-        print(f"Best Validation Accuracy of variant-2 Architecture: {BestACC * 100:.2f}%")
-                
-        model.train()
-
+def test_best_model_variant2(model,test_loader):
+    class_names = ['Anger     :', 'Neutral   :', 'Engaged   :', 'Bored     :']
+    model.load_state_dict(torch.load('model_variant2'))
+    model.eval()
+    with torch.no_grad():
+        all_samples = 0
+        correct_predictions = 0
+        y_true = []
+        y_pred = []
+        for instances, labels in test_loader:
+            output = model(instances)
+            _, predicted_class = torch.max(output, 1)
+            all_samples += output.size(0)
+            correct_predictions += (predicted_class == labels).sum().item()
+    test_accuracy = correct_predictions / all_samples
+    print(f'Test Accuracy of Main Architecture: {test_accuracy * 100:.2f}%')
+    # Generate confusion matrix for Model2 Architecture
+    cm = confusion_matrix(y_true, y_pred)
+    # Print the confusion matrix with labels
+    print("Confusion Matrix Variant2:")
+    for i in range(len(class_names)):
+        print(f"{class_names[i]}{cm[i]}")
 
 
 
@@ -362,5 +384,5 @@ if __name__ == '__main__':
 
     train_loader, val_loader, test_loader = dataset_loader(batch_size)
     MultiLayerModel(input_size,hidden_size,output_size,num_epochs,train_loader, val_loader, test_loader)
-    #Variant1Model(input_size,hidden_size,output_size,num_epochs,train_loader, val_loader, test_loader)   
-    #variant2Model(input_size,hidden_size,output_size,num_epochs,train_loader, val_loader, test_loader)
+    Variant1Model(input_size,hidden_size,output_size,num_epochs,train_loader, val_loader, test_loader)   
+    variant2Model(input_size,hidden_size,output_size,num_epochs,train_loader, val_loader, test_loader)
