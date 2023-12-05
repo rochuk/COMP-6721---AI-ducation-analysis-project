@@ -21,9 +21,9 @@ This repository contains the materials for the Part 1 submission of our AI-ducat
 
   You need to wait a moment for the visualization to be displayed. After closing the images the labels of the duplicates would be displayed.
 
--**BiasAnalysis.py**: This python file is to check the bias in the dataset based on 2 categories i.e., age and gender.
+**BiasAnalysis.py**: This python file is to check the bias in the dataset based on 2 categories i.e., age and gender.
 
--**Training.py**: This python file is to develop a convolutional neural network architecture for main model and two variants.
+**Training.py**: This python file is to develop a convolutional neural network architecture for main model and two variants.
 
--**FinalModel.py**: This python file is to perform KFold Cross validation on the dataset.
+**FinalModel.py**: This python file is to perform KFold Cross validation on the dataset.
 
