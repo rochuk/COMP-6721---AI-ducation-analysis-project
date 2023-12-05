@@ -2,7 +2,7 @@
 ## Overview
 This repository contains the materials for the Part 1 submission of our AI-ducation analysis project. The key components included are:
 
-- **Report_AI**: This text document provides a comprehensive overview of Part 1 of our project, including all the necessary details.
+- **Report_AI**: This text document provides a comprehensive overview of all three parts of our project, including all the necessary details.
 
 - **Dataset**: This text document includes information about all categories of the dataset, their sources, and sample images.
 
@@ -20,4 +20,10 @@ This repository contains the materials for the Part 1 submission of our AI-ducat
   - Bar chart showing the distribution of images in each class
 
   You need to wait a moment for the visualization to be displayed. After closing the images the labels of the duplicates would be displayed.
+
+-**BiasAnalysis.py**: This python file is to check the bias in the dataset based on 2 categories i.e., age and gender.
+
+-**Training.py**: This python file is to develop a convolutional neural network architecture for main model and two variants.
+
+-**FinalModel.py**: This python file is to perform KFold Cross validation on the dataset.
 
