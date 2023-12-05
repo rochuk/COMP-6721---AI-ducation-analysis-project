@@ -25,5 +25,6 @@ This repository contains the materials for the Part 1 submission of our AI-ducat
 
 **Training.py**: This python file is to develop a convolutional neural network architecture for main model and two variants.
 
-**FinalModel.py**: This python file is to perform KFold Cross validation on the dataset.
+**Final_model.py**: This python file is to perform KFold Cross validation on the dataset.
 
+**ConfusionKFold.py**: This python file computes connfusion matrix for the best saved model obtained during kfold cross validation.
